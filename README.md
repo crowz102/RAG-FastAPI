@@ -29,7 +29,7 @@ Câu hỏi → Embed → Similarity Search (Qdrant) → Top-K chunks
     ↓
 Ghép vào RAG Prompt
     ↓
-Gemini API → Câu trả lời
+GROQ API → Câu trả lời
     ↓
 Lưu lịch sử hội thoại (theo session)
 ```
