@@ -6,8 +6,8 @@ Backend hệ thống hỏi đáp thông minh dựa trên tài liệu PDF, sử d
 
 - **FastAPI** — RESTful API backend
 - **Qdrant** — Vector database cho semantic search
-- **Sentence Transformers** — Embedding model (`all-MiniLM-L6-v2`)
-- **Google Gemini 1.5 Flash** — LLM tạo câu trả lời
+- **Sentence Transformers** — Embedding model (`paraphrase-multilingual-MiniLM-L12-v2`)
+- **GROQ API** — LLM tạo câu trả lời
 - **PyMuPDF** — Đọc và trích xuất text từ PDF
 
 ## Kiến trúc RAG Pipeline
