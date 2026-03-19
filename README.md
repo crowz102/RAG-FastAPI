@@ -54,12 +54,12 @@ pip install -r requirements.txt
 Tạo file `.env`:
 
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
+GROQ_API_KEY=your_api_key_here
 QDRANT_HOST=localhost
 QDRANT_PORT=6333
 ```
 
-Lấy Gemini API key miễn phí tại: https://aistudio.google.com/app/apikey
+Lấy Groq API key miễn phí tại: https://groq.com/
 
 ### 3. Chạy Qdrant bằng Docker
 
