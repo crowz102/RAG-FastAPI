@@ -1,10 +1,13 @@
 import fitz  # pymupdf
 import uuid
 import re
+import io
+import docx
+from bs4 import BeautifulSoup
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, VectorParams, Distance, Filter, FieldCondition, MatchValue
 from sentence_transformers import SentenceTransformer
-from app.config import QDRANT_HOST, QDRANT_PORT, COLLECTION_NAME, EMBEDDING_MODEL
+from app.core.config import QDRANT_HOST, QDRANT_PORT, COLLECTION_NAME, EMBEDDING_MODEL
 
 embedder = SentenceTransformer(EMBEDDING_MODEL)
 client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
@@ -89,15 +92,34 @@ def delete_existing_chunks(filename: str):
     )
 
 
-def ingest_pdf(file_bytes: bytes, filename: str) -> int:
+def extract_text(file_bytes: bytes, filename: str) -> str:
+    ext = filename.lower()
+    if ext.endswith(".pdf"):
+        return extract_text_from_pdf(file_bytes)
+    elif ext.endswith(".docx"):
+        return extract_text_from_docx(file_bytes)
+    elif ext.endswith(".html"):
+        return extract_text_from_html(file_bytes)
+    else:
+        raise ValueError("Định dạng file không được hỗ trợ.")
+
+def extract_text_from_docx(file_bytes: bytes) -> str:
+    doc = docx.Document(io.BytesIO(file_bytes))
+    return "\n".join([p.text for p in doc.paragraphs])
+
+def extract_text_from_html(file_bytes: bytes) -> str:
+    soup = BeautifulSoup(file_bytes, "html.parser")
+    return soup.get_text(separator="\n")
+
+def ingest_doc(file_bytes: bytes, filename: str) -> int:
     ensure_collection()
 
     # Xóa chunks cũ nếu file đã được ingest trước đó → tránh duplicate
     delete_existing_chunks(filename)
 
-    text = extract_text_from_pdf(file_bytes)
+    text = extract_text(file_bytes, filename)
     if not text.strip():
-        raise ValueError("Không đọc được text từ PDF này (có thể là PDF scan/ảnh).")
+        raise ValueError(f"Không đọc được text từ file: {filename}")
 
     text = clean_text(text)
     chunks = chunk_by_paragraph(text)
