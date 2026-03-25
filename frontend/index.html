@@ -244,24 +244,32 @@
             border: 1px solid rgba(248, 113, 113, .15);
         }
 
-        .admin-btn {
-            background: rgba(79, 209, 197, 0.1);
-            border: 1px solid var(--accent2);
-            color: var(--accent2);
-            padding: 5px 12px;
-            border-radius: 6px;
-            font-size: 11px;
-            cursor: pointer;
-            margin-right: 10px;
+        .admin-link {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            margin: 12px 14px;
+            background: rgba(126, 232, 162, 0.08);
+            border: 1px solid rgba(126, 232, 162, 0.2);
+            border-radius: 10px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
             transition: all 0.2s;
-            font-family: var(--font-mono);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            cursor: pointer;
         }
 
-        .admin-btn:hover {
-            background: var(--accent2);
-            color: var(--bg);
+        .admin-link:hover {
+            background: rgba(126, 232, 162, 0.15);
+            border-color: var(--accent);
+            transform: translateX(4px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .admin-link.active {
+            display: flex;
         }
 
         .hidden {
@@ -1243,9 +1251,10 @@
     <aside class="sidebar">
         <div class="logo">
             <div class="logo-title">
-                <div class="logo-dot"></div>DocMind
+                <img src="/static/logo.svg" class="logo-img" alt="MediRAG Logo" style="width: 24px; height: 24px;">
+                <span>MediRAG</span>
             </div>
-            <div class="logo-sub">RAG · Qdrant · Llama 3.3</div>
+            <div class="logo-sub">Medical AI Assistant</div>
         </div>
 
         <div class="tabs">
@@ -1286,7 +1295,6 @@
         <div class="chat-header">
             <div class="header-session" id="headerSession">Chưa có session</div>
             <div style="display:flex; align-items:center;">
-                <button id="adminBtn" class="admin-btn hidden" onclick="window.location.href='/admin.html'">Quản trị</button>
                 <button class="logout-btn" onclick="logout()">Đăng xuất</button>
             </div>
         </div>
@@ -1346,7 +1354,8 @@
     <script>
         const API = '';
         let currentSessionId = null;
-        const uploadedDocs = [];
+        let sessions = [];
+        let documents = [];
         let token = localStorage.getItem('token');
         let isLogin = true;
 
@@ -1364,15 +1373,45 @@
         }
 
         async function checkAdmin() {
+            if (!token) return;
+            // Nếu là admin, đẩy thẳng sang trang admin, không cho ở lại chat
+            if (localStorage.getItem('is_admin') === 'true') {
+                window.location.href = '/admin.html';
+                return;
+            }
+            
             try {
                 const res = await fetch(`${API}/me`, { headers: authHeaders() });
                 if (res.ok) {
                     const data = await res.json();
                     if (data.is_admin) {
-                        document.getElementById('adminBtn').classList.remove('hidden');
+                        localStorage.setItem('is_admin', 'true');
+                        window.location.href = '/admin.html';
+                    } else {
+                        localStorage.removeItem('is_admin');
                     }
                 }
             } catch (e) { }
+        }
+
+        function resetAppState() {
+            // 1. Reset variables
+            currentSessionId = null;
+            sessions = [];
+            
+            // 2. Clear UI
+            document.getElementById('sessionsList').innerHTML = '';
+            document.getElementById('docsList').innerHTML = '';
+            document.getElementById('messages').innerHTML = `
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">?</div>
+                    <div class="empty-text">Tạo chat mới và upload tài liệu để bắt đầu</div>
+                </div>
+            `;
+            document.getElementById('headerSession').textContent = 'Chưa có session';
+            
+            const link = document.getElementById('adminLink');
+            if (link) link.classList.remove('active');
         }
 
         function authHeaders(isFormData = false) {
@@ -1384,10 +1423,9 @@
         function logout() {
             localStorage.removeItem('token');
             token = null;
+            resetAppState();
             document.getElementById('authUsername').value = '';
             document.getElementById('authPassword').value = '';
-            const btn = document.getElementById('adminBtn');
-            if (btn) btn.classList.add('hidden');
             initApp();
         }
 
@@ -1453,9 +1491,12 @@
                     if (!res.ok) throw new Error(data.detail || 'Sai tài khoản/mật khẩu');
                     token = data.access_token;
                     localStorage.setItem('token', token);
+                    
                     if (data.is_admin) {
-                        window.location.href = 'admin.html';
+                        localStorage.setItem('is_admin', 'true');
+                        window.location.href = '/admin.html';
                     } else {
+                        localStorage.removeItem('is_admin');
                         initApp();
                     }
                 } else {

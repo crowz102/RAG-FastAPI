@@ -30,10 +30,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return user
 
 async def get_current_admin_user(current_user: dict = Depends(get_current_user)):
-    if not current_user.get("is_admin"):
+    # Đảm bảo is_admin được ép kiểu bool chuẩn xác từ DB
+    is_admin = bool(current_user.get("is_admin", False))
+    if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Người dùng không có quyền quản trị viên"
+            detail="Truy cập bị từ chối: Yêu cầu quyền Quản trị viên."
         )
     return current_user
 
@@ -68,7 +70,11 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user["id"]}, expires_delta=access_token_expires
+        data={
+            "sub": user["id"],
+            "role": "admin" if user.get("is_admin") else "user"
+        }, 
+        expires_delta=access_token_expires
     )
     return {
         "access_token": access_token, 

@@ -1,18 +1,20 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
 from app.schemas.payloads import IngestResponse
 from app.services.ingest import ingest_doc
-
-router = APIRouter()
-
 from app.api.endpoints.auth import get_current_user
-from fastapi import Depends
 import uuid
 from datetime import datetime
 from app.db.database import get_conn
 from app.worker import ingest_task
 
-@router.post("/ingest", response_model=dict) # Tra ve dict vi structure thay doi
-async def ingest_document(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+router = APIRouter()
+
+@router.post("/ingest", response_model=dict)
+async def ingest_document(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...), 
+    current_user: dict = Depends(get_current_user)
+):
     filename = file.filename.lower()
     if not (filename.endswith(".pdf") or filename.endswith(".docx") or filename.endswith(".docxx") or filename.endswith(".html")):
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file PDF, DOCX, hoặc HTML.")
@@ -72,12 +74,11 @@ async def ingest_document(file: UploadFile = File(...), current_user: dict = Dep
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi xử lý Metadata: {str(e)}")
 
-    # 2. Đẩy task vào Celery (Background) - Chỉ khi thực sự cần thiết
-    task = ingest_task.delay(file_bytes, file.filename, current_user["id"], doc_id)
+    # 2. Đẩy task vào BackgroundTasks (Chạy chung tiến trình để tiết kiệm RAM)
+    background_tasks.add_task(ingest_task, file_bytes, file.filename, current_user["id"], doc_id)
     
     return {
-        "message": "Đã bắt đầu xử lý tài liệu mới!",
-        "task_id": task.id,
+        "message": "Đã bắt đầu xử lý tài liệu mới (Monolith Mode)!",
         "doc_id": doc_id,
         "filename": file.filename,
         "status": "processing"

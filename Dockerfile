@@ -14,6 +14,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download FastEmbed model to avoid runtime delay and RAM spikes
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
+
 COPY . .
 
 # Phan quyen cho script khoi chay

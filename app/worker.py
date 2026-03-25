@@ -20,8 +20,7 @@ celery_app.conf.update(
     enable_utc=True,
 )
 
-@celery_app.task(name="ingest_task", bind=True)
-def ingest_task(self, file_bytes: bytes, filename: str, user_id: str, doc_id: str):
+def ingest_task(file_bytes: bytes, filename: str, user_id: str, doc_id: str):
     logging.info(f"Bắt đầu xử lý file: {filename} cho user: {user_id}")
     try:
         # Thực hiện ingest thực tế

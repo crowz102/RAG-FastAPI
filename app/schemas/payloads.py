@@ -9,6 +9,8 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     id: str
     username: str
+    email: Optional[str] = None
+    is_admin: bool = False
 
 class Token(BaseModel):
     access_token: str
