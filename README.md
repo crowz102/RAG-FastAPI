@@ -48,7 +48,7 @@
 ## 🌍 Triển khai Production
 
 Chi tiết hướng dẫn triển khai hoàn toàn miễn phí trên **Render** kết hợp với **Supabase & Upstash** có thể xem tại:
-👉 [Hướng dẫn Triển khai (Walkthrough)](.system_generated/walkthrough.md)
+👉 [Hướng dẫn Triển khai Chi tiết (A-Z)](DEPLOY.md)
 
 ---
 *Phát triển bởi Crowz. 🚑🏁*
