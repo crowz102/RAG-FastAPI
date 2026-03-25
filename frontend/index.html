@@ -1286,8 +1286,7 @@
         <div class="chat-header">
             <div class="header-session" id="headerSession">Chưa có session</div>
             <div style="display:flex; align-items:center;">
-                <button id="adminBtn" class="admin-btn hidden" onclick="window.location.href='/admin.html'">Quản
-                    trị</button>
+                <button id="adminBtn" class="admin-btn hidden" onclick="window.location.href='/admin.html'">Quản trị</button>
                 <button class="logout-btn" onclick="logout()">Đăng xuất</button>
             </div>
         </div>
@@ -1387,6 +1386,8 @@
             token = null;
             document.getElementById('authUsername').value = '';
             document.getElementById('authPassword').value = '';
+            const btn = document.getElementById('adminBtn');
+            if (btn) btn.classList.add('hidden');
             initApp();
         }
 
