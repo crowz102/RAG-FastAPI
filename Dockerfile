@@ -16,8 +16,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Phan quyen cho script khoi chay
+RUN chmod +x start.sh
+
 # Port cho FastAPI
 EXPOSE 8000
 
-# Script mac dinh (se duoc override trong docker-compose cho worker)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Chay ca API va Worker
+CMD ["./start.sh"]
