@@ -1,15 +1,9 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchAny, MatchText, MatchValue
-from sentence_transformers import CrossEncoder
 from app.core.config import QDRANT_HOST, QDRANT_PORT, QDRANT_API_KEY, COLLECTION_NAME, EMBEDDING_MODEL
 from app.services.ingest import get_embedder
 
-# Pre-load Models at Module Level to avoid latency on first request
-_cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
-_client = None
-
-def get_cross_encoder():
-    return _cross_encoder
+# Re-ranking is disabled to save RAM on Render Free Tier
 
 def get_qdrant_client():
     global _client
@@ -83,19 +77,9 @@ async def retrieve(question: str, top_k: int = 5, filenames: list[str] = None, u
     if not documents:
         return []
 
-    # 4. Re-ranking
-    try:
-        cross_inp = [[question, doc["text"]] for doc in documents]
-        cross_encoder = get_cross_encoder()
-        cross_scores = await asyncio.to_thread(cross_encoder.predict, cross_inp)
+    # 4. Re-ranking (Tạm thời tắt để tiết kiệm RAM trên Render Free)
+    for doc in documents:
+        doc["cross_score"] = doc["qdrant_score"]
 
-        for idx, score in enumerate(cross_scores):
-            documents[idx]["cross_score"] = float(score)
-
-        documents.sort(key=lambda x: x["cross_score"], reverse=True)
-    except Exception as e:
-        print(f"⚠️ Lỗi Re-ranking (Sẽ dùng kết quả Vector gốc): {str(e)}")
-        for doc in documents:
-            doc["cross_score"] = doc["qdrant_score"]
-
+    documents.sort(key=lambda x: x["qdrant_score"], reverse=True)
     return documents[:top_k]
