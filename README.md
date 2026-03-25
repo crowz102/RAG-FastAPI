@@ -6,6 +6,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
 ![Qdrant](https://img.shields.io/badge/Qdrant-Cloud-ff4b4b?style=for-the-badge&logo=qdrant)
 ![Groq](https://img.shields.io/badge/Groq-Llama_3.3-f3a000?style=for-the-badge)
+![FastEmbed](https://img.shields.io/badge/FastEmbed-Lightweight-blueviolet?style=for-the-badge)
 
 ## ✨ Tính năng nổi bật
 
@@ -20,6 +21,7 @@
 - **Backend:** FastAPI, Python 3.11.
 - **Vector DB:** Qdrant Cloud.
 - **LLM Engine:** Groq (Llama 3.3 70B).
+- **Embedding Engine:** **FastEmbed** (Siêu nhẹ, tối ưu cho RAM 512MB).
 - **Task Queue:** Celery + Redis (Upstash) để xử lý nạp tài liệu ngầm.
 - **Database:** PostgreSQL (Supabase).
 - **Frontend:** HTML5, Vanilla CSS, JavaScript.
