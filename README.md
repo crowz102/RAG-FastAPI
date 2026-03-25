@@ -51,4 +51,4 @@ Chi tiết hướng dẫn triển khai hoàn toàn miễn phí trên **Render** 
 👉 [Hướng dẫn Triển khai (Walkthrough)](.system_generated/walkthrough.md)
 
 ---
-*Phát triển bởi Đội ngũ MediRAG Team. 🚑🏁*
+*Phát triển bởi Crowz. 🚑🏁*
