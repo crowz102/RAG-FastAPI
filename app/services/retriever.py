@@ -5,6 +5,8 @@ from app.services.ingest import get_embedder
 
 # Re-ranking is disabled to save RAM on Render Free Tier
 
+_client = None
+
 def get_qdrant_client():
     global _client
     if _client is None:
