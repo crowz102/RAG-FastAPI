@@ -1,105 +1,54 @@
-# RAG Chatbot API
+# 🤖 MediRAG — AI Medical Knowledge Assistant 🏥✨
 
-Backend hệ thống hỏi đáp thông minh dựa trên tài liệu PDF, sử dụng RAG (Retrieval-Augmented Generation) với FastAPI, Qdrant và Gemini AI.
+**MediRAG** là một giải pháp Chatbot hỏi đáp thông minh dành cho lĩnh vực Y tế, sử dụng kỹ thuật **RAG (Retrieval-Augmented Generation)** tiên tiến để cung cấp thông tin chính xác dựa trên kho tài liệu nội bộ của bạn.
 
-## Tech Stack
+![MediRAG Branding](https://img.shields.io/badge/MediRAG-Modern--RAG-4fd1c5?style=for-the-badge)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+![Qdrant](https://img.shields.io/badge/Qdrant-Cloud-ff4b4b?style=for-the-badge&logo=qdrant)
+![Groq](https://img.shields.io/badge/Groq-Llama_3.3-f3a000?style=for-the-badge)
 
-- **FastAPI** — RESTful API backend
-- **Qdrant** — Vector database cho semantic search
-- **Sentence Transformers** — Embedding model (`paraphrase-multilingual-MiniLM-L12-v2`)
-- **GROQ API** — LLM tạo câu trả lời
-- **PyMuPDF** — Đọc và trích xuất text từ PDF
+## ✨ Tính năng nổi bật
 
-## Kiến trúc RAG Pipeline
+- ⚡ **Hỏi đáp Thời gian thực:** Sử dụng kiến trúc SSE (Server-Sent Events) giúp câu trả lời hiển thị mượt mà từng chữ.
+- ☁️ **Cloud Native:** Tích hợp trực tiếp với **Qdrant Cloud** (AWS N. Virginia) cho khả năng tìm kiếm vector tốc độ cao.
+- 📦 **Monolith Docker:** Chạy cả API và Celery Worker trong cùng một Container, tối ưu hóa cho việc triển khai miễn phí trên Render/Koyeb.
+- 📊 **Admin Dashboard:** Giao diện quản trị hiện đại để theo dõi người dùng, tài liệu và hiệu suất hệ thống.
+- 🎨 **UI/UX Tối giản:** Sử dụng font chữ chuyên dụng hỗ trợ tiếng Việt (Inter, Be Vietnam Pro) và Markdown rendering sắc nét.
 
-```
-Upload PDF
-    ↓
-Trích xuất text (PyMuPDF)
-    ↓
-Chia chunk (500 ký tự, overlap 50)
-    ↓
-Embedding (Sentence Transformers)
-    ↓
-Lưu vào Qdrant
+## 🛠️ Tech Stack
 
-──── Khi user hỏi ────
+- **Backend:** FastAPI, Python 3.11.
+- **Vector DB:** Qdrant Cloud.
+- **LLM Engine:** Groq (Llama 3.3 70B).
+- **Task Queue:** Celery + Redis (Upstash) để xử lý nạp tài liệu ngầm.
+- **Database:** PostgreSQL (Supabase).
+- **Frontend:** HTML5, Vanilla CSS, JavaScript.
 
-Câu hỏi → Embed → Similarity Search (Qdrant) → Top-K chunks
-    ↓
-Ghép vào RAG Prompt
-    ↓
-GROQ API → Câu trả lời
-    ↓
-Lưu lịch sử hội thoại (theo session)
-```
+## 🚀 Khởi động nhanh (Local)
 
-## Cài đặt và Chạy
+1. **Chuẩn bị file `.env`:**
+   ```env
+   GROQ_API_KEY=your_key
+   QDRANT_HOST=your_cloud_host
+   QDRANT_API_KEY=your_cloud_key
+   DATABASE_URL=postgresql://...
+   REDIS_URL=redis://localhost:6379/0
+   ADMIN_PASSWORD=your_secure_pass
+   ```
 
-### 1. Clone và setup môi trường
+2. **Chạy bằng Docker Compose:**
+   ```bash
+   docker-compose up --build
+   ```
 
-```bash
-git clone <repo-url>
-cd rag-fastapi
+3. **Truy cập:**
+   - App: `http://localhost:8000`
+   - Admin: `http://localhost:8000/admin.html`
 
-python -m venv venv
-venv\Scripts\activate   # Windows
-# hoặc: source venv/bin/activate  (Linux/macOS)
+## 🌍 Triển khai Production
 
-pip install -r requirements.txt
-```
+Chi tiết hướng dẫn triển khai hoàn toàn miễn phí trên **Render** kết hợp với **Supabase & Upstash** có thể xem tại:
+👉 [Hướng dẫn Triển khai (Walkthrough)](.system_generated/walkthrough.md)
 
-### 2. Cấu hình biến môi trường
-
-Tạo file `.env`:
-
-```env
-GROQ_API_KEY=your_api_key_here
-QDRANT_HOST=localhost
-QDRANT_PORT=6333
-```
-
-Lấy Groq API key miễn phí tại: https://groq.com/
-
-### 3. Chạy Qdrant bằng Docker
-
-```bash
-docker run -d -p 6333:6333 -p 6334:6334 --name qdrant qdrant/qdrant
-```
-
-### 4. Chạy server
-
-```bash
-uvicorn app.main:app --reload
-```
-
-API docs: http://localhost:8000/docs
-
-## API Endpoints
-
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| POST | `/ingest` | Upload PDF, tự động chunk và lưu vào Qdrant |
-| POST | `/chat` | Hỏi đáp dựa trên tài liệu đã upload |
-| GET | `/history/{session_id}` | Lấy lịch sử hội thoại |
-| DELETE | `/history/{session_id}` | Xóa lịch sử hội thoại |
-
-### Ví dụ sử dụng
-
-**Upload tài liệu:**
-```bash
-curl -X POST http://localhost:8000/ingest \
-  -F "file=@document.pdf"
-```
-
-**Hỏi đáp:**
-```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"question": "Nội dung chính của tài liệu là gì?", "session_id": "user_1"}'
-```
-
-**Xem lịch sử:**
-```bash
-curl http://localhost:8000/history/user_1
-```
+---
+*Phát triển bởi Đội ngũ MediRAG Team. 🚑🏁*
