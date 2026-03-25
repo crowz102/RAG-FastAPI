@@ -1,0 +1,14 @@
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bong bong chat (Chat Bubble) -->
+  <path d="M8 8H32C34.2091 8 36 9.79086 36 12V28C36 30.2091 34.2091 32 32 32H16L8 38V32V12C8 9.79086 9.79086 8 12 8H8Z" fill="url(#blueGrad)"/>
+  
+  <!-- Chu thap y te (Medical Cross) -->
+  <path d="M22 14H18V20H12V24H18V30H22V24H28V20H22V14Z" fill="white"/>
+  
+  <defs>
+    <linearGradient id="blueGrad" x1="8" y1="8" x2="36" y2="38" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B82F6"/> <!-- Blue 500 -->
+      <stop offset="1" stop-color="#1D4ED8"/> <!-- Blue 700 -->
+    </linearGradient>
+  </defs>
+</svg>
