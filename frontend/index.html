@@ -1317,7 +1317,7 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        const API = 'http://localhost:8000';
+        const API = '';
         let currentSessionId = null;
         const uploadedDocs = [];
         let token = localStorage.getItem('token');
@@ -1853,7 +1853,7 @@
             const tk = localStorage.getItem('token');
             if (!tk) return;
             if (presenceSource) { presenceSource.close(); presenceSource = null; }
-            presenceSource = new EventSource(`http://localhost:8000/presence/ping?token=${encodeURIComponent(tk)}`);
+            presenceSource = new EventSource(`/presence/ping?token=${encodeURIComponent(tk)}`);
             presenceSource.onerror = () => {
                 presenceSource.close();
                 presenceSource = null;
