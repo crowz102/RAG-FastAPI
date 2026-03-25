@@ -6,8 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DocMind — RAG Chatbot</title>
     <link
-        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&family=Be+Vietnam+Pro:wght@400;500;600&family=Fira+Code&display=swap"
         rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
             --bg: #0d0f12;
@@ -285,6 +286,29 @@
             font-size: 11px;
             color: var(--text-dim);
             animation: fadeIn .3s ease;
+            transition: all 0.2s;
+        }
+
+        .doc-item.processing {
+            opacity: 0.6;
+            border-style: dashed;
+            background: rgba(126, 232, 162, 0.02);
+        }
+
+        .spinner-small {
+            width: 10px;
+            height: 10px;
+            border: 1.5px solid rgba(126, 232, 162, 0.2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: inline-block;
+        }
+
+        .badge-purple {
+            background: rgba(167, 139, 250, 0.1);
+            color: #a78bfa;
+            border: 1px solid rgba(167, 139, 250, 0.2);
         }
 
         .doc-name {
@@ -292,16 +316,6 @@
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
-        }
-
-        .doc-chunks {
-            font-family: var(--font-mono);
-            font-size: 10px;
-            color: var(--accent);
-            background: rgba(126, 232, 162, .08);
-            padding: 2px 6px;
-            border-radius: 4px;
-            flex-shrink: 0;
         }
 
         /* CHATS PANEL */
@@ -585,6 +599,92 @@
             line-height: 1.65;
         }
 
+        /* Markdown Content Styles */
+        .bubble table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+            font-size: 13px;
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .bubble th,
+        .bubble td {
+            border: 1px solid var(--border);
+            padding: 8px;
+            text-align: left;
+        }
+
+        .bubble th {
+            background: rgba(0, 0, 0, 0.1);
+            font-weight: 600;
+        }
+
+        .bubble code {
+            font-family: 'Fira Code', monospace;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .bubble pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .bubble pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        .bubble blockquote {
+            border-left: 4px solid var(--accent);
+            padding-left: 15px;
+            margin: 10px 0;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .bubble ul,
+        .bubble ol {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+
+        .bubble li {
+            margin-bottom: 4px;
+        }
+
+        .bubble p {
+            margin-bottom: 10px;
+        }
+
+        .bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .bot .bubble table {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .bot .bubble th {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .bot .bubble code {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .bot .bubble blockquote {
+            color: #cbd5e1;
+        }
+
         .message.user .bubble {
             background: var(--user-bubble);
             border: 1px solid rgba(126, 232, 162, .15);
@@ -595,6 +695,8 @@
             background: var(--bot-bubble);
             border: 1px solid var(--border);
             border-bottom-left-radius: 4px;
+            font-family: var(--font-body);
+            line-height: 1.62;
         }
 
         .typing {
@@ -785,6 +887,7 @@
                 opacity: 0;
                 transform: translateY(4px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -793,40 +896,300 @@
 
         /* AUTH & FILTER */
         .auth-overlay {
-            position: fixed; inset: 0; background: rgba(13, 15, 18, 0.95);
-            backdrop-filter: blur(10px); z-index: 9999;
-            display: flex; align-items: center; justify-content: center;
+            position: fixed;
+            inset: 0;
+            background: rgba(13, 15, 18, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+
         .auth-box {
-            background: var(--surface); border: 1px solid var(--border);
-            padding: 30px; border-radius: 16px; width: 340px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 30px;
+            border-radius: 16px;
+            width: 340px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         }
-        .auth-title { font-family: var(--font-display); font-size: 24px; margin-bottom: 20px; text-align: center; }
-        .auth-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .auth-tab { flex: 1; padding: 8px; background: none; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; border-radius: 8px; font-family: var(--font-ui); }
-        .auth-tab.active { background: rgba(126, 232, 162, 0.1); border-color: var(--accent); color: var(--accent); }
+
+        .auth-title {
+            font-family: var(--font-display);
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 8px;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 8px;
+            font-family: var(--font-ui);
+        }
+
+        .auth-tab.active {
+            background: rgba(126, 232, 162, 0.1);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
         .auth-box input {
-            width: 100%; background: var(--surface2); border: 1px solid var(--border);
-            padding: 12px; border-radius: 8px; margin-bottom: 12px; color: var(--text); outline: none;
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            color: var(--text);
+            outline: none;
         }
-        .auth-box input:focus { border-color: var(--accent); }
+
+        .auth-box input:focus {
+            border-color: var(--accent);
+        }
+
         .auth-btn {
-            width: 100%; background: var(--accent); color: #000; border: none; padding: 12px;
-            border-radius: 8px; cursor: pointer; font-weight: 600; font-family: var(--font-ui); margin-top: 5px;
+            width: 100%;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: var(--font-ui);
+            margin-top: 5px;
         }
-        .auth-btn:hover { background: #6ee09a; }
-        .auth-status { margin-top: 12px; font-size: 12px; text-align: center; font-family: var(--font-mono); }
-        .filter-row { margin-bottom: 10px; }
+
+        .auth-btn:hover {
+            background: #6ee09a;
+        }
+
+        .auth-status {
+            margin-top: 12px;
+            font-size: 12px;
+            text-align: center;
+            font-family: var(--font-mono);
+        }
+
+        .filter-row {
+            margin-bottom: 10px;
+        }
+
         .filter-row input {
-            width: 100%; background: rgba(255,255,255,0.02); border: 1px solid var(--border);
-            padding: 8px 12px; border-radius: 8px; color: var(--text); font-size: 12px; outline: none;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 12px;
+            outline: none;
         }
-        .filter-row input:focus { border-color: var(--accent2); }
+
+        .filter-row input:focus {
+            border-color: var(--accent2);
+        }
+
         .logout-btn {
-            background: none; border: 1px solid var(--border); color: var(--text-muted);
-            padding: 4px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; margin-left: auto;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-left: auto;
         }
-        .logout-btn:hover { color: var(--danger); border-color: rgba(248, 113, 113, 0.3); }
+
+        .logout-btn:hover {
+            color: var(--danger);
+            border-color: rgba(248, 113, 113, 0.3);
+        }
+
+        /* ── FILE SCOPE DROPDOWN ── */
+        .file-scope-bar {
+            position: relative;
+            margin-bottom: 8px;
+        }
+
+        .scope-trigger {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            transition: all .15s;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .scope-trigger:hover {
+            border-color: var(--border-bright);
+            color: var(--text-dim);
+        }
+
+        .scope-trigger.active {
+            border-color: rgba(79, 209, 197, .4);
+            color: var(--accent2);
+        }
+
+        .scope-trigger #scopeLabel {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .scope-arrow {
+            transition: transform .2s;
+            flex-shrink: 0;
+            opacity: .5;
+        }
+
+        .scope-arrow.open {
+            transform: rotate(180deg);
+            opacity: 1;
+        }
+
+        .scope-dropdown {
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border-bright);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 500;
+            box-shadow: 0 -8px 32px rgba(0, 0, 0, .5);
+            max-height: 260px;
+            display: flex;
+            flex-direction: column;
+            transition: opacity .15s, visibility .15s, transform .15s;
+            transform: translateY(4px);
+        }
+
+        .scope-dropdown.open {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: all;
+            transform: translateY(0);
+        }
+
+        .scope-dropdown-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            background: var(--surface2);
+        }
+
+        .scope-ctrl-btn {
+            font-size: 10px;
+            font-family: var(--font-mono);
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 2px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .scope-ctrl-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .scope-cb-list {
+            overflow-y: auto;
+        }
+
+        .scope-cb-list::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .scope-cb-list::-webkit-scrollbar-thumb {
+            background: var(--border-bright);
+            border-radius: 2px;
+        }
+
+        .scope-cb-item {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background .12s;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .scope-cb-item:last-child {
+            border-bottom: none;
+        }
+
+        .scope-cb-item:hover {
+            background: var(--surface2);
+        }
+
+        .scope-cb-item input[type=checkbox] {
+            accent-color: var(--accent);
+            width: 13px;
+            height: 13px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .scope-cb-item label {
+            font-size: 11px;
+            color: var(--text-muted);
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            cursor: pointer;
+            flex: 1;
+            font-family: var(--font-mono);
+            user-select: none;
+            transition: color .12s;
+        }
+
+        .scope-cb-item:has(input:checked) {
+            background: rgba(126, 232, 162, .04);
+        }
+
+        .scope-cb-item:has(input:checked) label {
+            color: var(--accent);
+        }
+
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -842,7 +1205,10 @@
             </div>
             <form id="authForm" onsubmit="handleAuth(event)">
                 <input type="text" id="authUsername" placeholder="Tên đăng nhập" required>
+                <input type="email" id="authEmail" placeholder="Email" class="auth-extra hidden">
                 <input type="password" id="authPassword" placeholder="Mật khẩu" required>
+                <input type="password" id="authConfirmPassword" placeholder="Xác nhận mật khẩu"
+                    class="auth-extra hidden">
                 <button type="submit" class="auth-btn" id="authBtn">Đi tiếp</button>
                 <div class="auth-status" id="authStatus"></div>
             </form>
@@ -880,7 +1246,7 @@
             <div class="upload-wrap">
                 <span class="section-label">Upload PDF</span>
                 <div class="drop-zone" id="dropZone">
-                    <input type="file" accept=".pdf" id="fileInput">
+                    <input type="file" accept=".pdf,.docx,.html" id="fileInput">
                     <span class="drop-icon">📄</span>
                     <div class="drop-text"><span>Chọn file</span> hoặc kéo thả</div>
                 </div>
@@ -906,8 +1272,30 @@
         </div>
 
         <div class="input-area">
-            <div class="filter-row">
-                <input type="text" id="fileFilter" placeholder="Lọc định phạm vi file (VD: a.pdf, b.docx) - Bỏ trống để tìm tất cả">
+            <!-- File scope dropdown -->
+            <div class="file-scope-bar" id="fileScopeBar">
+                <button class="scope-trigger" id="scopeTrigger" onclick="toggleScopeDropdown()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round">
+                        <path d="M4 6h16M7 12h10M10 18h4" />
+                    </svg>
+                    <span id="scopeLabel">Tất cả tài liệu</span>
+                    <svg class="scope-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                        <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                </button>
+                <div class="scope-dropdown" id="scopeDropdown">
+                    <div class="scope-dropdown-header">
+                        <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Chọn tài liệu
+                            để hỏi</span>
+                        <div style="display:flex;gap:6px;">
+                            <button onclick="selectAllDocs(true)" class="scope-ctrl-btn">All</button>
+                            <button onclick="selectAllDocs(false)" class="scope-ctrl-btn">None</button>
+                        </div>
+                    </div>
+                    <div id="scopeCheckboxList"></div>
+                </div>
             </div>
             <div class="input-row">
                 <textarea id="questionInput" placeholder="Hỏi về nội dung tài liệu..." rows="1"></textarea>
@@ -943,6 +1331,7 @@
             } else {
                 document.getElementById('authOverlay').style.display = 'none';
                 loadSessions();
+                loadDocuments(); // Thêm dòng này để load docs khi reload trang
             }
         }
 
@@ -955,24 +1344,60 @@
         function logout() {
             localStorage.removeItem('token');
             token = null;
+            document.getElementById('authUsername').value = '';
+            document.getElementById('authPassword').value = '';
             initApp();
         }
 
         function switchAuthTab(type) {
             isLogin = type === 'login';
-            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
+            const tabs = document.querySelectorAll('.auth-tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            if (isLogin) tabs[0].classList.add('active');
+            else tabs[1].classList.add('active');
+
             document.getElementById('authBtn').textContent = isLogin ? 'Đăng nhập' : 'Đăng ký';
             document.getElementById('authStatus').textContent = '';
+
+            // Xoa sach cac truong nhap
+            document.getElementById('authUsername').value = '';
+            document.getElementById('authPassword').value = '';
+            document.getElementById('authEmail').value = '';
+            document.getElementById('authConfirmPassword').value = '';
+
+            // An/Hien truong bo sung
+            const extras = document.querySelectorAll('.auth-extra');
+            extras.forEach(el => {
+                el.classList.toggle('hidden', isLogin);
+                el.required = !isLogin;
+            });
         }
 
         async function handleAuth(e) {
             e.preventDefault();
             const u = document.getElementById('authUsername').value.trim();
             const p = document.getElementById('authPassword').value.trim();
+            const email = document.getElementById('authEmail').value.trim();
+            const confirmP = document.getElementById('authConfirmPassword').value.trim();
             const status = document.getElementById('authStatus');
             const btn = document.getElementById('authBtn');
-            
+
+            if (!isLogin && p !== confirmP) {
+                status.style.color = 'var(--danger)';
+                status.textContent = 'Mật khẩu xác nhận không khớp!';
+                return;
+            }
+
+            // Kiểm tra định dạng Email
+            if (!isLogin) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    status.style.color = 'var(--danger)';
+                    status.textContent = 'Định dạng Email không hợp lệ!';
+                    return;
+                }
+            }
+
             status.style.color = 'var(--text-muted)';
             status.textContent = 'Đang xử lý...';
             btn.disabled = true;
@@ -986,19 +1411,26 @@
                     if (!res.ok) throw new Error(data.detail || 'Sai tài khoản/mật khẩu');
                     token = data.access_token;
                     localStorage.setItem('token', token);
-                    initApp();
+                    if (data.is_admin) {
+                        window.location.href = 'admin.html';
+                    } else {
+                        initApp();
+                    }
                 } else {
-                    const res = await fetch(`${API}/register`, { 
-                        method: 'POST', headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({username: u, password: p}) 
+                    const res = await fetch(`${API}/register`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: u, password: p, email: email })
                     });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.detail || 'Lỗi đăng ký');
-                    status.style.color = 'var(--accent)';
-                    status.textContent = 'Đăng ký thành công! Hãy đăng nhập.';
-                    switchAuthTab('login');
+                    status.style.color = '#7ee8a2';
+                    status.textContent = 'Đăng ký thành công! Đang chuyển sang Đăng nhập...';
+                    showToast('Tài khoản đã sẵn sàng!', 'accent');
+                    setTimeout(() => {
+                        switchAuthTab('login');
+                    }, 1600);
                 }
-            } catch(e) {
+            } catch (e) {
                 status.style.color = 'var(--danger)';
                 status.textContent = e.message;
             }
@@ -1031,22 +1463,157 @@
 
         async function uploadFile(file) {
             const st = document.getElementById('uploadStatus');
-            st.className = 'upload-status loading'; st.innerHTML = '<div class="spinner"></div> Đang xử lý...';
+            st.className = 'upload-status loading'; st.innerHTML = '<div class="spinner"></div> Đang gửi file...';
             const form = new FormData(); form.append('file', file);
             try {
                 const res = await fetch(`${API}/ingest`, { method: 'POST', body: form, headers: authHeaders(true) });
                 const data = await res.json();
                 if (!res.ok) handleApiError(res, data);
-                st.className = 'upload-status success'; st.innerHTML = `✓ ${data.chunks_stored} chunks`;
-                if (!uploadedDocs.includes(file.name)) {
-                    uploadedDocs.push(file.name);
-                    const item = document.createElement('div'); item.className = 'doc-item';
-                    item.innerHTML = `<span>📄</span><span class="doc-name" title="${file.name}">${file.name}</span><span class="doc-chunks">${data.chunks_stored}</span>`;
-                    document.getElementById('docsList').appendChild(item);
+
+                if (data.already_exists) {
+                    st.className = 'upload-status success';
+                    st.innerHTML = `✓ Tài liệu đã sẵn sàng!`;
+                    showToast(`"${file.name}" đã tồn tại và sẵn sàng.`, 'accent');
+                    loadDocuments();
+                    setTimeout(() => { st.className = 'upload-status'; }, 4000);
+                    return;
                 }
-                showToast(`Đã ingest "${file.name}"`, 'accent');
-            } catch (err) { st.className = 'upload-status error'; st.innerHTML = `✗ ${err.message}`; showToast(err.message, 'error'); }
+
+                // Hiển thị trạng thái đang xử lý thay vì chunks_stored
+                st.className = 'upload-status success';
+                st.innerHTML = `✓ Đã nhận file. Đang xử lý ngầm...`;
+
+                showToast(`Đang xử lý "${file.name}"...`, 'accent');
+
+                // Polling nhẹ để cập nhật danh sách khi xong (tùy chọn, ở đây ta load lại Documents)
+                setTimeout(() => loadDocuments(), 3000);
+
+                // Tự động ẩn thông báo sau 10s (Dự phòng)
+                setTimeout(() => { if (st.classList.contains('success')) st.className = 'upload-status'; }, 10000);
+
+            } catch (err) {
+                st.className = 'upload-status error';
+                st.innerHTML = `✗ ${err.message}`;
+                showToast(err.message, 'error');
+            }
             document.getElementById('fileInput').value = '';
+        }
+
+        async function loadDocuments() {
+            try {
+                const res = await fetch(`${API}/documents`, { headers: authHeaders() });
+                if (!res.ok) return;
+                const data = await res.json();
+                renderDocsList(data.documents || []);
+            } catch { }
+        }
+
+        function renderDocsList(docs) {
+            // Sidebar docs list
+            const list = document.getElementById('docsList');
+            let hasProcessing = false;
+
+            if (list) {
+                list.innerHTML = '';
+                if (!docs.length) {
+                    list.innerHTML = '<div style="padding:12px 14px;font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Chưa có tài liệu</div>';
+                } else {
+                    docs.forEach(doc => {
+                        if (doc.status === 'processing') hasProcessing = true;
+
+                        const item = document.createElement('div');
+                        item.className = 'doc-item' + (doc.status === 'processing' ? ' processing' : '');
+
+                        let statusIcon = '📄';
+                        if (doc.status === 'processing') statusIcon = '<div class="spinner-small"></div>';
+                        else if (doc.status === 'failed') statusIcon = '<span title="Lỗi nạp file">⚠️</span>';
+
+                        item.innerHTML = `<span>${statusIcon}</span><span class="doc-name" title="${doc.filename}">${doc.filename}</span>`;
+                        list.appendChild(item);
+                    });
+                }
+            }
+
+            // Tự động ẩn thông báo global nếu không còn file nào đang xử lý
+            const st = document.getElementById('uploadStatus');
+            if (st && !hasProcessing && st.classList.contains('success')) {
+                st.className = 'upload-status';
+            }
+
+            // Dropdown checkbox list (Chỉ cho phép chọn file đã completed)
+            const cbList = document.getElementById('scopeCheckboxList');
+            if (cbList) {
+                cbList.className = 'scope-cb-list';
+                cbList.innerHTML = '';
+                const completedDocs = docs.filter(d => d.status === 'completed');
+
+                if (!completedDocs.length) {
+                    cbList.innerHTML = '<div style="padding:10px 12px;font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Chưa có tài liệu sẵn sàng</div>';
+                } else {
+                    completedDocs.forEach(doc => {
+                        const name = doc.filename;
+                        const item = document.createElement('div');
+                        item.className = 'scope-cb-item';
+                        const id = 'cb-' + name.replace(/[^a-zA-Z0-9]/g, '_');
+                        item.innerHTML = `<input type="checkbox" id="${id}" value="${name}" onchange="updateScopeLabel()"><label for="${id}">${name}</label>`;
+                        cbList.appendChild(item);
+                    });
+                }
+            }
+            updateScopeLabel();
+
+            // Nếu có file đang xử lý, tự động poll lại sau 5s
+            if (hasProcessing) {
+                if (window.docPollTimer) clearTimeout(window.docPollTimer);
+                window.docPollTimer = setTimeout(() => loadDocuments(), 5000);
+            }
+        }
+
+        function toggleScopeDropdown() {
+            const dd = document.getElementById('scopeDropdown');
+            const arrow = document.querySelector('.scope-arrow');
+            const trigger = document.getElementById('scopeTrigger');
+            const isOpen = dd.classList.contains('open');
+            dd.classList.toggle('open', !isOpen);
+            arrow.classList.toggle('open', !isOpen);
+            trigger.classList.toggle('active', !isOpen);
+        }
+
+        // Đóng dropdown khi click ra ngoài
+        document.addEventListener('click', e => {
+            const bar = document.getElementById('fileScopeBar');
+            if (bar && !bar.contains(e.target)) {
+                document.getElementById('scopeDropdown')?.classList.remove('open');
+                document.querySelector('.scope-arrow')?.classList.remove('open');
+                document.getElementById('scopeTrigger')?.classList.remove('active');
+            }
+        });
+
+        function selectAllDocs(checked) {
+            document.querySelectorAll('#scopeCheckboxList input[type=checkbox]').forEach(cb => cb.checked = checked);
+            updateScopeLabel();
+        }
+
+        function updateScopeLabel() {
+            const selected = getSelectedFilenames();
+            const label = document.getElementById('scopeLabel');
+            const trigger = document.getElementById('scopeTrigger');
+            if (!label) return;
+            if (!selected || selected.length === 0) {
+                label.textContent = 'Tất cả tài liệu';
+                trigger?.classList.remove('active');
+            } else if (selected.length === 1) {
+                label.textContent = selected[0];
+                trigger?.classList.add('active');
+            } else {
+                label.textContent = `${selected.length} tài liệu được chọn`;
+                trigger?.classList.add('active');
+            }
+        }
+
+        function getSelectedFilenames() {
+            const checked = [...document.querySelectorAll('#scopeCheckboxList input[type=checkbox]:checked')];
+            return checked.length > 0 ? checked.map(cb => cb.value) : null;
         }
 
         // ── SESSIONS ──
@@ -1056,7 +1623,7 @@
                 const sessions = await res.json();
                 if (!res.ok) handleApiError(res, sessions);
                 renderSessions(sessions);
-            } catch (e) { if(e.message) showToast(e.message, 'error'); }
+            } catch (e) { if (e.message) showToast(e.message, 'error'); }
         }
 
         function renderSessions(sessions) {
@@ -1103,7 +1670,7 @@
                 data.messages.forEach(m => {
                     appendMessage(m.role === 'user' ? 'user' : 'bot', m.content);
                 });
-            } catch (e) { showToast(e.message, 'error')}
+            } catch (e) { showToast(e.message, 'error') }
         }
 
         function newChat() {
@@ -1130,19 +1697,17 @@
                 }
                 loadSessions();
                 showToast('Đã xóa session', 'accent');
-            } catch(e) { showToast(e.message, 'error'); }
+            } catch (e) { showToast(e.message, 'error'); }
         }
 
         // ── CHAT SSE STREAMING ──
         async function sendMessage() {
             const input = document.getElementById('questionInput');
-            const fileFilterInput = document.getElementById('fileFilter');
             const question = input.value.trim();
             if (!question) return;
-            if (!currentSessionId) { showToast('Tạo New Chat trước nhé!', 'error'); return; }
+            if (!currentSessionId) { currentSessionId = 'session-' + Date.now(); document.getElementById('headerSession').textContent = currentSessionId; }
 
-            let filenamesStr = fileFilterInput ? fileFilterInput.value.trim() : "";
-            let filenamesArr = filenamesStr ? filenamesStr.split(',').map(s=>s.trim()).filter(s=>s) : null;
+            let filenamesArr = getSelectedFilenames();
 
             document.getElementById('emptyState')?.remove();
             appendMessage('user', question);
@@ -1166,8 +1731,8 @@
 
                 if (!res.ok) {
                     let errData;
-                    try { errData = await res.json() } catch(e){}
-                    handleApiError(res, errData || {detail: `HTTP ${res.status}`});
+                    try { errData = await res.json() } catch (e) { }
+                    handleApiError(res, errData || { detail: `HTTP ${res.status}` });
                 }
 
                 // Streaming Reader
@@ -1185,12 +1750,12 @@
                         buffer += decoder.decode(value, { stream: true });
                         let parts = buffer.split('\n\n');
                         buffer = parts.pop();
-                        
+
                         for (let part of parts) {
                             if (part.startsWith('data: ')) {
                                 const dataStr = part.slice(6);
                                 if (dataStr === '[DONE]') break;
-                                
+
                                 try {
                                     const dataO = JSON.parse(dataStr);
                                     if (dataO.type === 'meta') {
@@ -1202,18 +1767,20 @@
                                         if (isFirstChunk) {
                                             bubbleElem.innerHTML = '';
                                             isFirstChunk = false;
+                                            bubbleElem._typingQueue = "";
+                                            bubbleElem._isTyping = false;
                                         }
-                                        bubbleElem.innerHTML += escHtml(dataO.chunk || "");
-                                        container.scrollTop = container.scrollHeight;
+                                        bubbleElem._typingQueue += dataO.chunk || "";
+                                        if (!bubbleElem._isTyping) startTyping(bubbleElem);
                                     }
-                                } catch(e) {
+                                } catch (e) {
                                     console.error("Parse SSE error:", e);
                                 }
                             }
                         }
                     }
                 }
-                loadSessions(); 
+                loadSessions();
             } catch (err) {
                 const bubbleElem = document.getElementById(`bubble-${id}`);
                 if (bubbleElem) bubbleElem.innerHTML = `<span style="color:var(--danger)">⚠️ ${err.message}</span>`;
@@ -1222,11 +1789,52 @@
             input.focus();
         }
 
+        // Ham thuc hien hieu ung danh may (Typing Effect) voi toc do linh hoat
+        function startTyping(el) {
+            if (el._isTyping || !el._typingQueue) return;
+            el._isTyping = true;
+            el._lineCount = 0;
+
+            const process = () => {
+                if (el._typingQueue.length > 0) {
+                    const char = el._typingQueue.charAt(0);
+                    el._typingQueue = el._typingQueue.substring(1);
+
+                    if (!el._rawText) el._rawText = "";
+                    el._rawText += char;
+                    if (char === '\n') el._lineCount++;
+                    el.innerHTML = marked.parse(el._rawText);
+
+                    // Cuon xuong cuoi
+                    const container = document.getElementById('messages');
+                    container.scrollTop = container.scrollHeight;
+
+                    // Tinh toan delay linh hoat: 
+                    // - Neu hang doi qua dai (>300 ky tu): chay cuc nhanh (2ms)
+                    // - Neu da viet qua 6 dong: chay nhanh hon (5ms)
+                    // - Binh thuong: 15ms
+                    let delay = 15;
+                    if (el._typingQueue.length > 300) delay = 2;
+                    else if (el._lineCount > 6) delay = 5;
+
+                    setTimeout(process, delay);
+                } else {
+                    el._isTyping = false;
+                    // Fix: parse mot lan cuoi de dam bao Markdown hoan thien
+                    el.innerHTML = marked.parse(el._rawText || el.textContent);
+                }
+            };
+
+            process();
+        }
+
         function appendMessage(role, text, sources = []) {
             const container = document.getElementById('messages');
             const wrap = document.createElement('div'); wrap.className = `message ${role}`;
             const sourcesHtml = sources.length ? `<div class="sources">${sources.map(s => `<span class="source-tag">📎 ${s}</span>`).join('')}</div>` : '';
-            wrap.innerHTML = `<div class="avatar">${role === 'user' ? 'U' : 'D'}</div><div class="bubble-wrap"><div class="bubble">${escHtml(text)}</div>${sourcesHtml}</div>`;
+            // Su dung marked cho lich su tin nhan
+            const contentHtml = marked.parse(text);
+            wrap.innerHTML = `<div class="avatar">${role === 'user' ? 'U' : 'D'}</div><div class="bubble-wrap"><div class="bubble">${contentHtml}</div>${sourcesHtml}</div>`;
             container.appendChild(wrap);
             container.scrollTop = container.scrollHeight;
         }
@@ -1239,8 +1847,27 @@
 
         function escHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>'); }
 
+        // Presence heartbeat: ket noi SSE de server dem online users
+        let presenceSource = null;
+        function connectPresence() {
+            const tk = localStorage.getItem('token');
+            if (!tk) return;
+            if (presenceSource) { presenceSource.close(); presenceSource = null; }
+            presenceSource = new EventSource(`http://localhost:8000/presence/ping?token=${encodeURIComponent(tk)}`);
+            presenceSource.onerror = () => {
+                presenceSource.close();
+                presenceSource = null;
+                setTimeout(connectPresence, 5000);
+            };
+        }
+        window.addEventListener('beforeunload', () => { if (presenceSource) presenceSource.close(); });
+
         // Start
         initApp();
+        // Ket noi presence sau khi app init (token co the chua co neu chua dang nhap)
+        connectPresence();
+        // Khi dang nhap thanh cong, ket noi lai
+        document.addEventListener('userLoggedIn', connectPresence);
     </script>
 </body>
 

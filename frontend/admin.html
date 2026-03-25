@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediRAG Admin Cockpit</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #0d0f12;
+            --surface: #13161a;
+            --surface2: #1a1e24;
+            --accent: #4fd1c5;
+            --accent2: #81e6d9;
+            --accent-glow: rgba(79, 209, 197, 0.2);
+            --danger: #f87171;
+            --danger-glow: rgba(248, 113, 113, 0.2);
+            --text: #e2e8f0;
+            --text-dim: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border: #2dd4bf20;
+            --border-bright: #2dd4bf40;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-ui: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        body,
+        html {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-ui);
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 260px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo-area {
+            padding: 20px;
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-menu {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            padding: 12px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-dim);
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .nav-item:hover {
+            background: var(--surface2);
+            color: var(--text);
+        }
+
+        .nav-item.active {
+            background: var(--accent-glow);
+            color: var(--accent);
+            border: 1px solid var(--border-bright);
+        }
+
+        .nav-bottom {
+            padding: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .back-btn {
+            width: 100%;
+            padding: 10px;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: var(--font-ui);
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        /* MAIN AREA */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: radial-gradient(circle at 100% 0%, var(--surface2) 0%, var(--bg) 60%);
+        }
+
+        .header {
+            height: 64px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+        }
+
+        .page-title {
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .content-body {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .tab-panel {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* COMPONENTS */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-family: var(--font-display);
+            font-size: 16px;
+            margin: 0 0 16px 0;
+            color: var(--accent);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-bright);
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-dim);
+        }
+
+        tr:hover td {
+            background: var(--surface2);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            background: var(--accent-glow);
+            color: var(--accent);
+            border: 1px solid var(--border-bright);
+        }
+
+        .badge-success {
+            background: rgba(126, 232, 162, 0.1);
+            color: var(--accent);
+        }
+
+        .badge-warning {
+            background: rgba(251, 191, 36, 0.1);
+            color: #fbbf24;
+        }
+
+        .badge-danger {
+            background: rgba(248, 113, 113, 0.1);
+            color: var(--danger);
+        }
+
+        .badge-purple {
+            background: rgba(167, 139, 250, 0.1);
+            color: #a78bfa;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-small:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-danger {
+            border-color: rgba(248, 113, 113, 0.3);
+            color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-glow);
+            border-color: var(--danger);
+            color: #fff;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .input-group input {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            border-radius: 8px;
+            color: var(--text);
+            outline: none;
+            font-family: var(--font-mono);
+            font-size: 13px;
+        }
+
+        .input-group input:focus {
+            border-color: var(--accent);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s;
+            font-family: var(--font-ui);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--surface2);
+            border: 1px solid var(--border-bright);
+            color: var(--accent);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 13px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.error {
+            border-color: var(--danger);
+            color: var(--danger);
+            background: var(--danger-glow);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="logo-area">
+            <img src="logo.png" alt="MediRAG" style="width: 28px; height: 28px; border-radius: 6px;">
+            MediRAG
+        </div>
+        <div class="nav-menu">
+            <div class="nav-item active" onclick="switchTab('users', this)">👥 Quản lý Users</div>
+            <div class="nav-item" onclick="switchTab('docs', this)">📚 Quản lý Documents</div>
+            <div class="nav-item" onclick="switchTab('settings', this)">🔑 System Settings</div>
+        </div>
+        <div class="nav-bottom">
+            <button class="back-btn" onclick="window.location.href='/'">← Back to Chat</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div class="page-title" id="pageTitle">Quản lý Users</div>
+            <div style="color: var(--text-muted); font-size: 13px;">Hi, Administrator</div>
+        </div>
+
+        <div class="content-body">
+            <!-- TAB USERS -->
+            <div id="tab-users" class="tab-panel active">
+                <style>
+                    .stat-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 16px;
+                        margin-bottom: 24px;
+                    }
+
+                    .stat-val {
+                        font-family: var(--font-display);
+                        font-size: 28px;
+                        font-weight: 700;
+                        margin-top: 4px;
+                    }
+
+                    .stat-label {
+                        font-size: 11px;
+                        color: var(--text-muted);
+                        font-family: var(--font-mono);
+                        text-transform: uppercase;
+                        letter-spacing: 0.05em;
+                    }
+
+                    .stat-card-sm {
+                        background: var(--surface2);
+                        border: 1px solid var(--border);
+                        padding: 16px;
+                        border-radius: 12px;
+                    }
+                </style>
+                <div style="display: grid; grid-template-columns: 3fr 2fr; gap: 24px; align-items: start;">
+                    <!-- LEFT COLUMN -->
+                    <div>
+                        <div class="card">
+                            <h3 class="card-title">Danh sách tài khoản hệ thống</h3>
+                            <div style="overflow-x: auto;">
+                                <table id="usersTable" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 25%">Username</th>
+                                            <th style="width: 15%">Role</th>
+                                            <th style="width: 45%">Custom API Key</th>
+                                            <th style="width: 15%">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Rendered via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN -->
+                    <div>
+                        <div class="stat-grid">
+                            <div class="stat-card-sm">
+                                <div class="stat-label">Truy Cập Online</div>
+                                <div class="stat-val" style="color:var(--accent);" id="statOnline">...</div>
+                            </div>
+                            <div class="stat-card-sm">
+                                <div class="stat-label">Lượt Gọi LLM</div>
+                                <div class="stat-val" style="color:var(--accent2);" id="statGroq">...</div>
+                            </div>
+                            <div class="stat-card-sm">
+                                <div class="stat-label">Kho Tài Khoản</div>
+                                <div class="stat-val" id="statUsers">...</div>
+                            </div>
+                            <div class="stat-card-sm">
+                                <div class="stat-label">Data Tin Nhắn</div>
+                                <div class="stat-val" id="statMsgs">...</div>
+                            </div>
+                        </div>
+
+                        <div class="card" style="padding: 20px;">
+                            <h3 class="card-title" style="font-size: 14px; margin-bottom: 16px;">Tần suất truy vấn thời
+                                gian thực</h3>
+                            <div style="height: 180px; position: relative;">
+                                <canvas id="trafficChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB DOCUMENTS -->
+            <div id="tab-docs" class="tab-panel">
+                <div class="card">
+                    <h3 class="card-title">Tài liệu đã Ingest trên Vector DB</h3>
+                    <table id="docsTable" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="width: 35%">Filename</th>
+                                <th style="width: 20%">Người đăng</th>
+                                <th style="width: 20%">Trạng thái</th>
+                                <th style="width: 10%">Chunks</th>
+                                <th style="width: 15%">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rendered via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB SETTINGS -->
+            <div id="tab-settings" class="tab-panel">
+                <div class="card" style="max-width: 600px;">
+                    <h3 class="card-title">Cấu hình Default Groq API Key</h3>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+                        Key này sẽ được dùng cho mọi User trên hệ thống nếu như họ không có Custom API Key riêng.
+                    </p>
+                    <div class="input-group">
+                        <input type="password" id="sysGroqKey" placeholder="gsk_xxxxxxxxxxxxxxxxxxxx...">
+                        <button class="btn-primary" onclick="saveSysKey()">Lưu Cấu Hình</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const API = 'http://localhost:8000/admin';
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+            alert('Bạn cần đăng nhập bằng tài khoản Administrator!');
+            window.location.href = '/';
+        }
+
+        function authHeaders() {
+            return {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        async function fetchAPI(url, options = {}) {
+            options.headers = authHeaders();
+            const res = await fetch(url, options);
+            const data = await res.json();
+            if (!res.ok) {
+                if (res.status === 401 || res.status === 403) {
+                    alert('Quyền truy cập bị từ chối. Bạn không phải là Admin!');
+                    window.location.href = '/';
+                }
+                throw new Error(data.detail || 'Lỗi hệ thống');
+            }
+            return data;
+        }
+
+        // TABS
+        function switchTab(tabId, el) {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+
+            document.getElementById('pageTitle').textContent = el ? el.textContent.substring(3).trim() : 'Admin Cockpit';
+
+            if (tabId === 'users') loadUsers();
+            if (tabId === 'docs') loadDocs();
+            if (tabId === 'settings') loadSettings();
+        }
+
+        // DASHBOARD MODULE
+        let dashboardTimer = null;
+        let trafficChart = null;
+
+        function initChart() {
+            if (trafficChart) return;
+            const ctx = document.getElementById('trafficChart').getContext('2d');
+            trafficChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['-13.5s', '-12s', '-10.5s', '-9s', '-7.5s', '-6s', '-4.5s', '-3s', '-1.5s', 'Now'],
+                    datasets: [
+                        {
+                            label: 'Lượt Gọi Groq API',
+                            data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            borderColor: '#4fd1c5',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Lượt Tin Nhắn',
+                            data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            borderColor: '#818cf8',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 500 },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: { color: '#94a3b8', boxWidth: 10, font: { family: 'Inter' } }
+                        }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: { display: true, beginAtZero: true, grid: { color: '#2dd4bf10' }, border: { dash: [4, 4] }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+
+        let lastGroq = null;
+        let lastMsgs = null;
+
+        async function loadDashboard() {
+            try {
+                fetchAPI(`${API}/analytics`).then(data => {
+                    document.getElementById('statOnline').textContent = data.online_users;
+                    document.getElementById('statGroq').textContent = data.groq_calls;
+                    document.getElementById('statUsers').textContent = data.total_users;
+                    document.getElementById('statMsgs').textContent = data.total_messages;
+
+                    if (!trafficChart) initChart();
+
+                    if (lastGroq === null) {
+                        lastGroq = data.groq_calls;
+                        lastMsgs = data.total_messages;
+                    } else {
+                        // Tính vận tốc (delta) trong 1.5s qua
+                        const deltaGroq = data.groq_calls - lastGroq;
+                        const deltaMsgs = data.total_messages - lastMsgs;
+
+                        lastGroq = data.groq_calls;
+                        lastMsgs = data.total_messages;
+
+                        // Cap nhat Datasets cho Chart
+                        let arrGroq = trafficChart.data.datasets[0].data;
+                        let arrMsgs = trafficChart.data.datasets[1].data;
+
+                        arrGroq.shift();
+                        arrMsgs.shift();
+
+                        arrGroq.push(deltaGroq);
+                        arrMsgs.push(deltaMsgs);
+
+                        trafficChart.update();
+                    }
+                }).catch(e => console.error(e));
+            } catch (e) { }
+        }
+
+        // USERS MODULE
+        async function loadUsers() {
+            try {
+                const users = await fetchAPI(`${API}/users`);
+                const tbody = document.querySelector('#usersTable tbody');
+                tbody.innerHTML = '';
+                users.forEach(u => {
+                    const row = `<tr>
+                        <td style="font-weight: 500">${u.username}</td>
+                        <td>${u.is_admin ? '<span class="badge">ADMIN</span>' : '<span class="badge" style="color:var(--text-muted); border-color:var(--border);">USER</span>'}</td>
+                        <td>
+                            <div style="display:flex; gap: 8px;">
+                                <input type="text" id="key_${u.id}" value="${u.api_key || ''}" placeholder="Mặc định hệ thống..." style="background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; color:var(--text); width: 200px; font-family: var(--font-mono); font-size: 11px; outline:none;">
+                                <button class="btn-small" onclick="saveUserKey('${u.id}')">Lưu Key</button>
+                            </div>
+                        </td>
+                        <td>
+                            <button class="btn-small btn-danger" onclick="deleteUser('${u.id}', '${u.username}')">Xóa</button>
+                        </td>
+                    </tr>`;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function saveUserKey(userId) {
+            const val = document.getElementById(`key_${userId}`).value;
+            try {
+                await fetchAPI(`${API}/users/${userId}/key`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ api_key: val })
+                });
+                showToast('Đã lưu API Key cho User này!');
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function deleteUser(userId, username) {
+            if (!confirm(`Xóa vĩnh viễn user '${username}' và mọi phiên trò chuyện của họ? Hành động này sẽ không thể khôi phục!`)) return;
+            try {
+                await fetchAPI(`${API}/users/${userId}`, { method: 'DELETE' });
+                showToast(`Đã xoá '${username}'`);
+                loadUsers();
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        // DOCS MODULE
+        async function loadDocs() {
+            try {
+                // Sửa URL: API đã có /admin nên chỉ cần gọi /documents
+                const data = await fetchAPI(`${API}/documents`);
+                const tbody = document.querySelector('#docsTable tbody');
+                tbody.innerHTML = '';
+                if (!data.documents.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Vườn không nhà trống. Chưa có tài liệu nào!</td></tr>';
+                    return;
+                }
+                data.documents.forEach(doc => {
+                    const statusClass = doc.status === 'completed' ? 'success' : (doc.status === 'failed' ? 'danger' : 'warning');
+                    const statusText = doc.status === 'completed' ? 'Thành công' : (doc.status === 'failed' ? 'Lỗi' : 'Đang xử lý...');
+
+                    // Thêm cảnh báo nếu trùng lặp nội dung với user khác
+                    const dupBadge = doc.is_duplicate ? `<span class="badge badge-purple" style="margin-left:5px;">Duplicate</span>` : '';
+
+                    const row = `<tr>
+                        <td style="font-family: var(--font-mono); font-size: 11px;">${doc.filename} ${dupBadge}</td>
+                        <td style="color: var(--accent); font-weight: 500">${doc.username || 'unknown'}</td>
+                        <td><span class="badge badge-${statusClass}">${statusText}</span></td>
+                        <td style="text-align:center;">${doc.chunks_count || 0}</td>
+                        <td>
+                            <button class="btn-small btn-danger" onclick="deleteDoc('${doc.filename}')">Xóa</button>
+                        </td>
+                    </tr>`;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function deleteDoc(filename) {
+            if (!confirm(`Mọi vector của tài liệu '${filename}' sẽ bị xoá. Bạn chắc chứ?`)) return;
+            try {
+                await fetchAPI(`${API}/documents/${filename}`, { method: 'DELETE' });
+                showToast(`Đã xoá '${filename}'!`);
+                loadDocs();
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        // SETTINGS MODULE
+        async function loadSettings() {
+            try {
+                const data = await fetchAPI(`${API}/settings/GROQ_API_KEY`);
+                document.getElementById('sysGroqKey').value = data.value || '';
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        async function saveSysKey() {
+            const val = document.getElementById('sysGroqKey').value.trim();
+            try {
+                await fetchAPI(`${API}/settings`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ key: 'GROQ_API_KEY', value: val })
+                });
+                showToast('Hệ thống đã thêm API Key mới thành công!');
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        function showToast(msg, type = '') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `toast show ${type}`;
+            setTimeout(() => t.className = 'toast', 3000);
+        }
+
+        // Init
+        loadDashboard();
+        loadUsers();
+        loadDocs();
+        loadSettings();
+
+        // Polling Real-time: Cập nhật thông tin mỗi 2 giây
+        setInterval(() => {
+            loadDashboard();
+            // Tự động load lại dữ liệu của tab hiện tại để đảm bảo tính Real-time
+            const activePanel = document.querySelector('.tab-panel.active');
+            if (activePanel) {
+                if (activePanel.id === 'tab-users') loadUsers();
+                if (activePanel.id === 'tab-docs') loadDocs();
+            }
+        }, 2000);
+    </script>
+</body>
+
+</html>

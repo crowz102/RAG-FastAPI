@@ -20,8 +20,19 @@ app.add_middleware(
 def startup():
     init_db()
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
 @app.get("/")
 def root():
-    return {"message": "RAG Chatbot API is running!"}
+    return FileResponse(os.path.join("frontend", "index.html"))
+
+@app.get("/admin")
+@app.get("/admin.html")
+def admin_page():
+    return FileResponse(os.path.join("frontend", "admin.html"))
 
 app.include_router(api_router)

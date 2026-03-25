@@ -1,52 +1,103 @@
 from groq import AsyncGroq
 from app.core.config import GROQ_API_KEY
+from app.db.database import get_setting
 
-client = AsyncGroq(api_key=GROQ_API_KEY)
+import httpx
+_groq_clients = {}
+_httpx_client = None
+
+def get_httpx_client():
+    global _httpx_client
+    if _httpx_client is None or _httpx_client.is_closed:
+        _httpx_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(60.0),
+            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20)
+        )
+    return _httpx_client
+
+async def get_groq_client(user_api_key: str = None) -> AsyncGroq:
+    api_key = None
+    if user_api_key and user_api_key.strip():
+        api_key = user_api_key.strip()
+    else:
+        api_key = get_setting("GROQ_API_KEY") or GROQ_API_KEY
+
+    if not api_key:
+        raise ValueError("Lỗi cấu hình: Administrator chưa thiết lập Groq API Key.")
+        
+    if api_key not in _groq_clients:
+        # Create AsyncGroq with our shared httpx client
+        _groq_clients[api_key] = AsyncGroq(
+            api_key=api_key,
+            http_client=get_httpx_client()
+        )
+        
+    return _groq_clients[api_key]
 
 
 def build_messages(question: str, contexts: list[dict], history: list[dict]) -> list[dict]:
-    """
-    Xây dựng danh sách messages cho Groq API theo chuẩn multi-turn conversation.
-    - System prompt: hướng dẫn LLM chỉ dùng context, không bịa
-    - History: N tin nhắn gần nhất để LLM nhớ ngữ cảnh
-    - User message cuối: context + câu hỏi hiện tại
-    """
+    # Lấy 6 tin nhắn chat gần nhất để tránh model bị quá tải context
+    recent_history = history[-6:] if len(history) > 6 else history
+
+    messages = [{"role": m["role"], "content": m["content"]} for m in recent_history]
+
     context_text = "\n\n---\n\n".join(
-        f"[Nguồn: {c['filename']}]\n{c['text']}" for c in contexts
+        f"[Nguồn: {c['filename']}, Trang: {c.get('page', 1)}]\n{c['text']}" for c in contexts
     )
 
-    system_prompt = """Bạn là chuyên gia phân tích và tìm kiếm thông tin tài liệu.
-Hãy phân tích câu hỏi, trích xuất các ý chính từ {TÀI LIỆU THAM KHẢO} và suy luận từng bước (Chain of Thought) để đưa ra câu trả lời chi tiết.
+    system_prompt = """Bạn là chuyên gia máy tính thông thái có nhiệm vụ phân tích tài liệu và trò chuyện với người dùng.
+Hãy suy luận từng bước (Chain of Thought) để đưa ra câu trả lời chi tiết và chính xác nhất.
 Quy tắc BẮT BUỘC:
-1. TRẢ LỜI DỰA HOÀN TOÀN VÀ DUY NHẤT VÀO TÀI LIỆU CUNG CẤP.
-2. NẾU KHÔNG CÓ THÔNG TIN TRONG TÀI LIỆU, hãy trả lời chính xác: "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong các tài liệu đã cung cấp." Tuyệt đối không bịa đặt hoặc dùng kiến thức ngoài lề.
-3. LUÔN trích dẫn nguồn (tên file) mỗi khi đưa ra một luận điểm cụ thể. VD: (Nguồn: thong_bao_a.pdf).
-4. Sử dụng lịch sử trò chuyện để hiểu rõ ngữ cảnh của đại từ (vd: "nó", "nhân vật này").
-5. Trình bày bằng cấu trúc rõ ràng (Dùng markdown bullet list/bold)."""
+1. TRẢ LỜI DỰA VÀO TÀI LIỆU CUNG CẤP. Ưu tiên thông tin trong tài liệu hơn kiến thức chung.
+2. NẾU CÂU HỎI KHÔNG CÓ TRONG TÀI LIỆU, hãy trả lời: "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong các tài liệu đã cung cấp." (Tuy nhiên, nếu là câu chào hỏi xã giao, hãy phản hồi thân thiện).
+3. LUÔN trích dẫn nguồn bao gồm Tên file và Số trang ngay bên cạnh thông tin trích dẫn. VD: (Nguồn: thong_bao_a.pdf, Trang 3).
+4. Sử dụng lịch sử trò chuyện để hiểu rõ ngữ cảnh.
+5. Trình bày bằng Markdown (Sử dụng Bold, Bullet points, hoặc Bảng nếu dữ liệu phức tạp)."""
 
-    messages = [{"role": "system", "content": system_prompt}]
+    messages.insert(0, {"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": f"TÀI LIỆU THAM KHẢO:\n{context_text}\n\nCâu hỏi: {question}"})
 
-    # Thêm N tin nhắn gần nhất từ history (tối đa 10 để không quá dài)
-    recent_history = history[-10:] if len(history) > 10 else history
-    for msg in recent_history:
-        role = "user" if msg["role"] == "user" else "assistant"
-        messages.append({"role": role, "content": msg["content"]})
-
-    # Tin nhắn hiện tại: ghép context + câu hỏi
-    if context_text:
-        user_content = f"""=== TÀI LIỆU THAM KHẢO ===
-{context_text}
-
-=== CÂU HỎI ===
-{question}"""
-    else:
-        user_content = question
-
-    messages.append({"role": "user", "content": user_content})
     return messages
 
 
-async def generate_answer_stream(question: str, contexts: list[dict], history: list[dict] = None):
+async def contextualize_question(question: str, history: list[dict], api_key: str = None) -> str:
+    """Viết lại câu hỏi dựa trên lịch sử để tạo thành câu hỏi độc lập (Standalone Question) dùng cho Vector Search."""
+    if not history:
+        return question
+        
+    system_prompt = """Dựa vào lịch sử trò chuyện và câu hỏi mới nhất của người dùng, việc của bạn là viết lại câu hỏi để có thể hiểu được hoàn toàn độc lập mà không cần lịch sử, nhưng vẫn giữ nguyên ý nghĩa ban đầu.
+Nhiệm vụ là tạo câu hỏi tìm kiếm (Search Query) chuẩn xác nhất cho cơ sở dữ liệu Vector.
+Chỉ trả về DUY NHẤT nội dung câu hỏi đã viết lại, tuyệt đối không giải thích thêm. Nếu câu hỏi đã độc lập sẵn hoặc là câu chào hỏi, trả về nguyên bản."""
+    
+    # Lấy 4 tin nhắn gần nhất để làm context nhanh
+    recent_history = history[-4:]
+    history_text = "\n".join([f"{m['role']}: {m['content']}" for m in recent_history])
+    
+    prompt = f"Lịch sử:\n{history_text}\n\nCâu hỏi mới: {question}\n\nViết lại câu hỏi:"
+    
+    try:
+        from app.db.database import increment_setting
+        client = await get_groq_client(api_key)
+        increment_setting("groq_api_calls", 1)  # Track telemetry
+        response = await client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.1,
+            max_tokens=64
+        )
+        rewritten = response.choices[0].message.content.strip()
+        # Loại bỏ ngoặc kép nếu LLM tự thêm
+        if rewritten.startswith('"') and rewritten.endswith('"'):
+            rewritten = rewritten[1:-1]
+        return rewritten
+    except Exception:
+        return question
+
+
+async def generate_answer_stream(question: str, contexts: list[dict], history: list[dict] = None, api_key: str = None):
     """Gọi Groq với stream=True"""
     if history is None:
         history = []
@@ -57,15 +108,21 @@ async def generate_answer_stream(question: str, contexts: list[dict], history: l
 
     messages = build_messages(question, contexts, history)
 
-    response = await client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=messages,
-        temperature=0.2,
-        max_tokens=1024,
-        stream=True
-    )
+    try:
+        from app.db.database import increment_setting
+        client = await get_groq_client(api_key)
+        increment_setting("groq_api_calls", 1)  # Track telemetry
+        response = await client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            temperature=0.2,
+            max_tokens=1024,
+            stream=True
+        )
 
-    async for chunk in response:
-        content = chunk.choices[0].delta.content
-        if content:
-            yield content
+        async for chunk in response:
+            content = chunk.choices[0].delta.content
+            if content:
+                yield content
+    except Exception as e:
+        yield f"Lỗi gọi AI: {str(e)}"

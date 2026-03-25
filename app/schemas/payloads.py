@@ -1,9 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 class UserCreate(BaseModel):
     username: str
     password: str
+    email: EmailStr
 
 class UserResponse(BaseModel):
     id: str
@@ -12,6 +13,7 @@ class UserResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    is_admin: bool = False
 
 
 class ChatRequest(BaseModel):
