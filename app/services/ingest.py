@@ -6,15 +6,19 @@ import docx
 from bs4 import BeautifulSoup
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, VectorParams, Distance, Filter, FieldCondition, MatchValue
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 from app.core.config import QDRANT_HOST, QDRANT_PORT, QDRANT_API_KEY, COLLECTION_NAME, EMBEDDING_MODEL
 
-# Pre-load Embedder at startup to reduce first-request latency
-_embedder = SentenceTransformer(EMBEDDING_MODEL)
+# Global variable to hold the embedder instance
+_embedder = None
 
 _client = None
 
 def get_embedder():
+    global _embedder
+    if _embedder is None:
+        print(f"📥 Loading FastEmbed Model: {EMBEDDING_MODEL}...")
+        _embedder = TextEmbedding(model_name=EMBEDDING_MODEL)
     return _embedder
 
 def get_qdrant_client():
@@ -200,10 +204,10 @@ def ingest_doc(file_bytes: bytes, filename: str, user_id: str) -> int:
     if not chunks_meta:
         raise ValueError("Không tạo được chunks từ tài liệu này.")
 
-    # 3. Embedding
+    # 3. Embedding (FastEmbed returns an iterator)
     embedder = get_embedder()
     texts_only = [c["text"] for c in chunks_meta]
-    vectors = embedder.encode(texts_only, show_progress_bar=False).tolist()
+    vectors = list(embedder.embed(texts_only))
 
     points = [
         PointStruct(

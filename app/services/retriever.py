@@ -24,9 +24,9 @@ def get_qdrant_client():
 import asyncio
 
 async def retrieve(question: str, top_k: int = 5, filenames: list[str] = None, user_id: str = None) -> list[dict]:
+    # 1. Embedding câu hỏi (FastEmbed returns an iterator of arrays)
     embedder = get_embedder()
-    query_vector = await asyncio.to_thread(embedder.encode, question)
-    query_vector = query_vector.tolist()
+    query_vector = list(embedder.embed([question]))[0].tolist()
 
     must_conditions = []
     if user_id:
