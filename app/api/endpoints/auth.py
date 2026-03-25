@@ -37,6 +37,15 @@ async def get_current_admin_user(current_user: dict = Depends(get_current_user))
         )
     return current_user
 
+@router.get("/me", response_model=UserResponse)
+async def get_me(current_user: dict = Depends(get_current_user)):
+    return {
+        "id": current_user["id"],
+        "username": current_user["username"],
+        "email": current_user.get("email"),
+        "is_admin": bool(current_user.get("is_admin", False))
+    }
+
 @router.post("/register", response_model=UserResponse)
 def register(user_in: UserCreate):
     # 1. Kiểm tra username

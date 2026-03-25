@@ -243,6 +243,30 @@
             border: 1px solid rgba(248, 113, 113, .15);
         }
 
+        .admin-btn {
+            background: rgba(79, 209, 197, 0.1);
+            border: 1px solid var(--accent2);
+            color: var(--accent2);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: all 0.2s;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .admin-btn:hover {
+            background: var(--accent2);
+            color: var(--bg);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
         .spinner {
             width: 11px;
             height: 11px;
@@ -1259,9 +1283,11 @@
 
     <main class="main">
         <div class="chat-header">
-
             <div class="header-session" id="headerSession">Chưa có session</div>
-            <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+            <div style="display:flex; align-items:center;">
+                <button id="adminBtn" class="admin-btn hidden" onclick="window.location.href='/admin.html'">Quản trị</button>
+                <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+            </div>
         </div>
 
         <div class="messages" id="messages">
@@ -1331,8 +1357,21 @@
             } else {
                 document.getElementById('authOverlay').style.display = 'none';
                 loadSessions();
-                loadDocuments(); // Thêm dòng này để load docs khi reload trang
+                loadDocuments();
+                checkAdmin();
             }
+        }
+
+        async function checkAdmin() {
+            try {
+                const res = await fetch(`${API}/me`, { headers: authHeaders() });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.is_admin) {
+                        document.getElementById('adminBtn').classList.remove('hidden');
+                    }
+                }
+            } catch (e) { }
         }
 
         function authHeaders(isFormData = false) {
